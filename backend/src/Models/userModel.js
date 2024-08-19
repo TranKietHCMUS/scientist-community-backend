@@ -1,4 +1,4 @@
-module.exports = (sequelize, DataTypes) => {
+module.exports = (sequelize, Sequelize, DataTypes) => {
 
     const Users = sequelize.define("users", {
         id: {
@@ -24,6 +24,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false
         },
+        day_of_birth: {
+            type: DataTypes.DATE,
+            allowNull: false
+        },
         about_me: {
             type: DataTypes.STRING
         },
@@ -36,6 +40,14 @@ module.exports = (sequelize, DataTypes) => {
         is_verify: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            field: 'created_at' // Chỉ định tên trường trong DB là created_at
+        },
+            updatedAt: {
+            type: DataTypes.DATE,
+            field: 'updated_at' // Chỉ định tên trường trong DB là updated_at
         }
     });
 

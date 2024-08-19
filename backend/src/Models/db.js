@@ -24,8 +24,8 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-db.users = require('./userModel.js')(sequelize, DataTypes);
-db.community = require("./communityModel.js")(sequelize, DataTypes);
+db.users = require('./userModel.js')(sequelize,Sequelize, DataTypes);
+db.community = require("./communityModel.js")(sequelize,Sequelize, DataTypes);
 
 db.sequelize.sync({ force: false })
 .then(() => {
