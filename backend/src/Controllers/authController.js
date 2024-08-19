@@ -51,7 +51,6 @@ const registerUser = async (req, res) => {
      
     Users.create(newUser)
     .then(user => {
-        // const {password, refresh_token,...others} = user.dataValues;
         sendEmail(user.email, verifyCode);
         return res.status(200).json({
                 data: {},
@@ -82,6 +81,7 @@ const verifyUser = async (req, res) => {
     }
 
     user.is_verify = true;
+    user.verify_code = null;
     await user.save();
 
     const {password, refresh_token, verify_code,...others} = user.dataValues;
@@ -286,6 +286,7 @@ const resetPassword = async (req, res) => {
     const hashedPassword = bcrypt.hashSync(req.body.password, salt);
 
     user.password = hashedPassword;
+    user.verify_code = null;
     await user.save();
 
     return res.status(200).json({
