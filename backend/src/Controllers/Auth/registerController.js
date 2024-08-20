@@ -37,7 +37,6 @@ const registerUser = async (req, res) => {
         username: req.body.username,
         name: req.body.name,
         password: hashedPassword,
-        day_of_birth: req.body.day_of_birth,
         verify_code: verifyCode
     }
      
