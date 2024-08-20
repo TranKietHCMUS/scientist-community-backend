@@ -3,13 +3,12 @@ const router = express.Router();
 const {loginUser, 
     requestRefreshToken, 
     logoutUser, 
-    oauthGoogle
-} = require("../Controllers/Auth/loginController");
-
-const {verifyUser, 
+    oauthGoogle,
+    verifyUser, 
     forgetPassword, 
     resetPassword,
-    registerUser} = require("../Controllers/Auth/registerController");
+    registerUser
+} = require("../Controllers/authController");
 
 router.post("/login", loginUser);
 router.post("/register", registerUser);

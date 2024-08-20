@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {getCommunityList, createCommunity, getCommunityDetail} = require("../Controllers/Community/communityController");
+const {getCommunityList, createCommunity, getCommunityDetail} = require("../Controllers/communityController");
 const {verifyToken} = require("../Middlewares/verifyToken")
 
 router.get("/", verifyToken, getCommunityList);
