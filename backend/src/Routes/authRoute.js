@@ -4,7 +4,7 @@ const {loginUser,
     requestRefreshToken, 
     logoutUser, 
     oauthGoogle
-} = require("../Controllers/Auth/loginController");
+} = require("../Controllers/userController");
 
 const {verifyUser, 
     forgetPassword, 
