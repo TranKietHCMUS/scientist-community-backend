@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const {updateProfileUser, getProfileUser, updateAvatarUser, getAvatarUser} = require("../Controllers/userController");
+const {updateProfileUser, getProfileUser, updateAvatarUser, getAvatarUser} = require("../Controllers/UserControllers/userController");
 const {verifyToken} = require("../Middlewares/verifyToken");
 const storage = require("../Utils/multer");
   
