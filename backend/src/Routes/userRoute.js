@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const {updateProfileUser, getProfileUser} = require("../Controllers/userController");
+const multer = require('multer');
+const {updateProfileUser, getProfileUser, updateAvatarUser, getAvatarUser} = require("../Controllers/userController");
 const {verifyToken} = require("../Middlewares/verifyToken");
+const storage = require("../Utils/multer");
+  
+const upload = multer({ storage });
 
-router.patch("/:id", verifyToken, updateProfileUser);
-router.get("/:id", verifyToken, getProfileUser);
+router.patch("/", verifyToken, updateProfileUser);
+router.get("/", verifyToken, getProfileUser);
+router.post("/avatar", verifyToken, upload.single('file'), updateAvatarUser);
+router.get("/avatar", verifyToken, getAvatarUser);
 
 module.exports = router;
