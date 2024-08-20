@@ -2,6 +2,15 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("../Utils/nodemailer");
 require("dotenv").config();
+const axios = require('axios');
+const { google } = require('googleapis');
+
+const OAuth2 = google.auth.OAuth2;
+const oauth2Client = new OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  'http://localhost:5173/users/home'
+);
 
 const db = require("../Models/db")
 const Users = db.users
@@ -46,6 +55,7 @@ const registerUser = async (req, res) => {
         username: req.body.username,
         name: req.body.name,
         password: hashedPassword,
+        day_of_birth: req.body.day_of_birth,
         verify_code: verifyCode
     }
      
@@ -71,7 +81,7 @@ const verifyUser = async (req, res) => {
     const verifyCode = req.body.verify_code;
     const username = verifyCode.slice(0, verifyCode.length - 7)
     const user = await Users.findOne({ where: { username: username}});
-    if (user.verify_code !== verifyCode) {
+    if (!user || user.verify_code !== verifyCode) {
         await user.destroy();
         return res.status(204).json({
             data: {},
@@ -123,11 +133,6 @@ const loginUser = async (req, res) => {
     const accessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
     const refreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
 
-    res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        sameSite: "strict"
-    });
-
     res.cookie("refreshToken", refreshToken, {
         httpOnly: true, 
         path: "/api/auth/refresh",
@@ -140,13 +145,18 @@ const loginUser = async (req, res) => {
         sameSite: "strict",
     });
 
-    const {password, refresh_token,...others} = user.dataValues;
+    const {password, refresh_token, verify_code,...others} = user.dataValues;
 
     user.refresh_token = refreshToken;
     await user.save() ;
 
+    console.log(user.created_at);
+
     return res.status(200).json({
-        data: others,
+        data: {
+            user: others,
+            access_token: accessToken
+        },
         status: 200,
         message: "Logged in successfully!"
     });
@@ -155,7 +165,6 @@ const loginUser = async (req, res) => {
 const logoutUser = async (req, res) => {
     const refreshToken = req.cookies.refreshLogout;
 
-    res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
     res.clearCookie("refreshLogout");
 
@@ -259,8 +268,10 @@ const forgetPassword = async (req, res) => {
             message: "Email not found!"
         });
     const verifyCode = generageVerifyCode(user.username);
+
     user.verify_code = verifyCode;
     await user.save();
+    
     sendEmail(user.email, verifyCode);
 
     return res.status(200).json({
@@ -296,6 +307,24 @@ const resetPassword = async (req, res) => {
     });
 };
 
+const oauthGoogle = async (req, res) => {
+    const { code } = req.body;
+  
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+  
+    const people = google.people({ version: 'v1', auth: oauth2Client });
+    const profile = await people.people.get({
+      resourceName: 'people/me',
+      personFields: 'names,emailAddresses'
+    });
+  
+    // Lưu thông tin người dùng vào database (nếu cần)
+    console.log(profile.data);
+  
+    res.json({ message: 'Đăng nhập thành công' });
+  };
+
 module.exports = {
     loginUser,
     registerUser,
@@ -303,5 +332,6 @@ module.exports = {
     logoutUser,
     verifyUser,
     resetPassword,
-    forgetPassword
+    forgetPassword,
+    oauthGoogle
   };

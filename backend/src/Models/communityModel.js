@@ -1,4 +1,4 @@
-module.exports = (sequelize, Sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
 
     const Community= sequelize.define("community", {
         id: {
@@ -20,16 +20,12 @@ module.exports = (sequelize, Sequelize,DataTypes) => {
         rate: {
             type: DataTypes.STRING
         },
-        createdAt: {
-            type: DataTypes.DATE,
-            field: 'created_at' // Chỉ định tên trường trong DB là created_at
-        },
-            updatedAt: {
-            type: DataTypes.DATE,
-            field: 'updated_at' // Chỉ định tên trường trong DB là updated_at
-        }
     }, {
         tableName: 'Community'
+    }, {
+        timestamps: true,
+        createdAt: 'created_at', // Alias createdAt as created_at
+        updatedAt: 'updated_at'  // Alias updatedAt as updated_at
     });
 
     return Community
