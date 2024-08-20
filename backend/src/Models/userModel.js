@@ -42,6 +42,9 @@ module.exports = (sequelize, DataTypes) => {
         },
         avatar: {
             type:DataTypes.STRING
+        },
+        global_ID: {
+            type: DataTypes.STRING
         }
     }, {
         timestamps: true,
