@@ -4,12 +4,12 @@ const {loginUser,
     requestRefreshToken, 
     logoutUser, 
     oauthGoogle
-} = require("../Controllers/AuthControllers/loginController");
+} = require("../Controllers/Auth/loginController");
 
 const {verifyUser, 
     forgetPassword, 
     resetPassword,
-    registerUser} = require("../Controllers/AuthControllers/registerController");
+    registerUser} = require("../Controllers/Auth/registerController");
 
 router.post("/login", loginUser);
 router.post("/register", registerUser);
