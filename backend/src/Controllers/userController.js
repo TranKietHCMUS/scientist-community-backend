@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const appRootPath = require("app-root-path");
-const db = require("../../Models/db");
+const db = require("../Models/db");
 const Users = db.users;
 const fs = require('fs');
 
