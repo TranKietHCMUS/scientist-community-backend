@@ -1,26 +1,9 @@
+const axios = require('axios');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const sendEmail = require("../Utils/nodemailer");
-require("dotenv").config();
-const axios = require('axios');
-const { google } = require('googleapis');
 
-const OAuth2 = google.auth.OAuth2;
-const oauth2Client = new OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  'http://localhost:5173/users/home'
-);
-
-const db = require("../Models/db")
-const Users = db.users
-
-function generageVerifyCode(username) {
-    const min = Math.pow(10, 6 - 1);
-    const max = Math.pow(10, 6) - 1;
-    const num = Math.floor(Math.random() * (max - min + 1)) + min;
-    return username + "-" + num.toString();
-}
+const db = require("../../Models/db");
+const Users = db.users;
 
 const generateToken = (user, secret_key, expire) => {
     return jwt.sign({
@@ -29,78 +12,6 @@ const generateToken = (user, secret_key, expire) => {
         name: user.name,
     }, secret_key, {expiresIn: expire});
 };
-
-const registerUser = async (req, res) => {
-    if (!req.body.username || !req.body.email || !req.body.password || !req.body.name)
-        return res.status(400).json({
-            data: {},
-            status: 400,
-            message: "All fields are required!"
-        });
-    const user = await Users.findOne({ where: { username: req.body.username}});
-    if (user)
-        return res.status(400).json({
-            data: {},
-            status: 400,
-            message: "User already exists!"
-        });
-    
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(req.body.password, salt);
-
-    const verifyCode = generageVerifyCode(req.body.username);
-
-    const newUser = {
-        email: req.body.email,
-        username: req.body.username,
-        name: req.body.name,
-        password: hashedPassword,
-        day_of_birth: req.body.day_of_birth,
-        verify_code: verifyCode
-    }
-     
-    Users.create(newUser)
-    .then(user => {
-        sendEmail(user.email, verifyCode);
-        return res.status(200).json({
-                data: {},
-                status: 200,
-                message: "Let's verify your email!"
-            });
-    })
-    .catch(err => {
-        return res.status(500).json({
-                data: {},
-                status: 500,
-                message: err
-            });
-    });
-}
-
-const verifyUser = async (req, res) => {
-    const verifyCode = req.body.verify_code;
-    const username = verifyCode.slice(0, verifyCode.length - 7)
-    const user = await Users.findOne({ where: { username: username}});
-    if (!user || user.verify_code !== verifyCode) {
-        await user.destroy();
-        return res.status(204).json({
-            data: {},
-            status: 204,
-            message: "Wrong verify code. Can not create account!"
-        });
-    }
-
-    user.is_verify = true;
-    user.verify_code = null;
-    await user.save();
-
-    const {password, refresh_token, verify_code,...others} = user.dataValues;
-    return res.status(201).json({
-        data: others,
-        status: 201,
-        message: "Created account!"
-    });
-}
 
 const loginUser = async (req, res) => {
     if (!req.body.username || !req.body.password) {
@@ -258,80 +169,86 @@ const requestRefreshToken = async (req, res) => {
     });
 }
 
-const forgetPassword = async (req, res) => {
-    email = req.body.email;
-    const user = await Users.findOne({ where: { email: req.body.email }});
-    if (!user)
-        return res.status(404).json({
-            data: {},
-            status: 404,
-            message: "Email not found!"
-        });
-    const verifyCode = generageVerifyCode(user.username);
-
-    user.verify_code = verifyCode;
-    await user.save();
-    
-    sendEmail(user.email, verifyCode);
-
-    return res.status(200).json({
-        data: {},
-        status: 200,
-        message: "Let's verify your email!"
-    });
-}
-
-const resetPassword = async (req, res) => {
-    const verifyCode = req.body.verify_code;
-    const username = verifyCode.slice(0, verifyCode.length - 7)
-    const user = await Users.findOne({ where: { username: username}});
-    if (user.verify_code !== verifyCode) {
-        return res.status(400).json({
-            data: {},
-            status: 400,
-            message: "Wrong verify code. Can not change password!"
-        });
+const getOauthGooleToken = async (code) => {
+    const body = {
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: process.env.GOOGLE_AUTHORIZED_REDIRECT_URI,
+      grant_type: 'authorization_code'
     }
-    
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(req.body.password, salt);
+    const { data } = await axios.post(
+      'https://oauth2.googleapis.com/token',
+      body,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    )
+    return data
+  }
+  
+  const getGoogleUser = async ({ id_token, access_token }) => {
+    const { data } = await axios.get(
+      'https://www.googleapis.com/oauth2/v1/userinfo',
+      {
+        params: {
+          access_token,
+          alt: 'json'
+        },
+        headers: {
+          Authorization: `Bearer ${id_token}`
+        }
+      }
+    )
+    return data
+  }
+  
+const oauthGoogle = async (req, res, next) => {
+    try {
+      const { code } = req.query
+      const data = await getOauthGooleToken(code)
+      const { id_token, access_token } = data
+      const googleUser = await getGoogleUser({ id_token, access_token })
+  
+      if (!googleUser.verified_email) {
+        return res.status(403).json({
+          message: 'Google email not verified'
+        })
+      }
+  
+      const manual_access_token = jwt.sign(
+        { email: googleUser.email, type: 'access_token' },
+        process.env.JWT_ACCESS_KEY,
+        { expiresIn: '15m' }
+      )
+      const manual_refresh_token = jwt.sign(
+        { email: googleUser.email, type: 'refresh_token' },
+        process.env.JWT_REFRESH_KEY,
+        { expiresIn: '100d' }
+      )
+  
+      console.log(googleUser)
 
-    user.password = hashedPassword;
-    user.verify_code = null;
-    await user.save();
-
-    return res.status(200).json({
+      res.cookie("refreshToken", manual_refresh_token, {
+        httpOnly: true, 
+        sameSite: "strict",
+    });
+  
+      return res.status(200).json({
         data: {},
         status: 200,
-        message: "Change password successfully!"
-    });
-};
-
-const oauthGoogle = async (req, res) => {
-    const { code } = req.body;
-  
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
-  
-    const people = google.people({ version: 'v1', auth: oauth2Client });
-    const profile = await people.people.get({
-      resourceName: 'people/me',
-      personFields: 'names,emailAddresses'
-    });
-  
-    // Lưu thông tin người dùng vào database (nếu cần)
-    console.log(profile.data);
-  
-    res.json({ message: 'Đăng nhập thành công' });
+        message: "Successfully!"
+      })
+    } catch (error) {
+      next(error)
+    }
   };
 
 module.exports = {
     loginUser,
-    registerUser,
     requestRefreshToken,
     logoutUser,
-    verifyUser,
-    resetPassword,
-    forgetPassword,
     oauthGoogle
   };

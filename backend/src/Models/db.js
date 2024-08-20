@@ -9,7 +9,7 @@ const sequelize = new Sequelize(
         dialect: 'mysql',
         operatorsAliases: false,
     }
-)
+);
 
 sequelize.authenticate()
 .then(() => {
