@@ -1,10 +1,10 @@
 const axios = require('axios');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const sendEmail = require("../Utils/nodemailer");
+const sendEmail = require("../configs/nodemailer");
 require("dotenv").config();
 
-const db = require("../Models/db");
+const db = require("../configs/db");
 const Users = db.users;
 
 const generateToken = (user, secret_key, expire) => {

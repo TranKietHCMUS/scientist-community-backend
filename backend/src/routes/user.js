@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const {updateProfileUser, getProfileUser, updateAvatarUser, getAvatarUser} = require("../Controllers/userController");
-const {verifyToken} = require("../Middlewares/verifyToken");
-const storage = require("../Utils/multer");
+const {updateProfileUser, getProfileUser, updateAvatarUser, getAvatarUser} = require("../controllers/user");
+const {verifyToken} = require("../middlewares/verify-token");
+const storage = require("../configs/multer");
   
 const upload = multer({ storage });
 
