@@ -26,11 +26,11 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-db.users = require("./userModel.js")(sequelize, DataTypes);
-db.community = require("./communityModel.js")(sequelize, DataTypes);
-db.document = require("./documentModel.js")(sequelize, DataTypes);
-db.member = require("./memberModel.js")(sequelize, DataTypes);
-db.basic_test = require("./BasicTest.js")(sequelize, DataTypes);
+db.users = require("../models/user.js")(sequelize, DataTypes);
+db.community = require("../models/community.js")(sequelize, DataTypes);
+db.document = require("../models/document.js")(sequelize, DataTypes);
+db.member = require("../models/member.js")(sequelize, DataTypes);
+db.basic_test = require("../models/BasicTest.js")(sequelize, DataTypes);
 
 // Define relationships
 db.users.hasMany(db.document, { foreignKey: "owner" });

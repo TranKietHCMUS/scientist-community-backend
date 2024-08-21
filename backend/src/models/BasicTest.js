@@ -1,5 +1,3 @@
-const { sequelize, community } = require("./db");
-
 module.exports = (sequelize, DataTypes) => {
   const BasicTest = sequelize.define("basic_test", {
     id: {

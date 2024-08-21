@@ -11,8 +11,8 @@ const {
   getChatHistory,
   createBasicTest,
   createDocument,
-} = require("../controllers/communityController");
-const { verifyToken } = require("../middlewares/verifyToken");
+} = require("../controllers/community");
+const { verifyToken } = require("../middlewares/verify-token");
 
 router.use(verifyToken); // protect all routes in this file
 

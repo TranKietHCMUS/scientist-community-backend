@@ -1,5 +1,3 @@
-const { community } = require("./db");
-
 const Member = (sequelize, DataTypes) => {
   return sequelize.define("member", {
     // Primary key (composite)

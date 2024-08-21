@@ -1,5 +1,5 @@
-const { get } = require("../Routes/userRoute");
-const { STATUS_CODE, formatResponse } = require("../Utils/formatResponse");
+const { get } = require("../routes/user");
+const { STATUS_CODE, formatResponse } = require("../configs/formatResponse");
 const db = require("../configs/db");
 const Community = db.community;
 const BasicTest = db.basic_test;
