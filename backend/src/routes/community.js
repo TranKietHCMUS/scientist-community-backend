@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const {getCommunityList, createCommunity, getCommunityDetail} = require("../Controllers/communityController");
-const {verifyToken} = require("../Middlewares/verifyToken")
+const {getCommunityList, createCommunity, getCommunityDetail} = require("../controllers/community");
+const {verifyToken} = require("../middlewares/verify-token")
 
 router.get("/", verifyToken, getCommunityList);
 router.post("/", verifyToken, createCommunity);

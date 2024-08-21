@@ -1,4 +1,4 @@
-const db = require("../Models/db");
+const db = require("../configs/db");
 const Community = db.community;
 
 const getCommunityList = async (req, res) => {
