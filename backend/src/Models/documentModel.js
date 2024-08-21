@@ -1,33 +1,33 @@
+const { sequelize } = require("./db");
+
 module.exports = (sequelize, DataTypes) => {
-  const Community = sequelize.define(
-    "community",
+  const Document = sequelize.define(
+    "document",
     {
       id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
       },
-      name: {
+      title: {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      decription: {
-        type: DataTypes.STRING,
+      content: {
+        type: DataTypes.TEXT,
       },
       owner: {
         type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
+        allowNull: false,
       },
-      rate: {
-        type: DataTypes.STRING,
+      community_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
       },
-    },
-    {
-      tableName: "Community",
+      price: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+      },
     },
     {
       timestamps: true,
@@ -36,5 +36,5 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
-  return Community;
+  return Document;
 };

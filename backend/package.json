@@ -16,6 +16,7 @@
   "dependencies": {
     "app-root-path": "^3.1.0",
     "axios": "^1.7.4",
+    "backend": "file:",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
