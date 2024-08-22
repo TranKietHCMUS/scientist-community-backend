@@ -4,7 +4,7 @@ const multer = require('multer');
 const {updateProfileUser, 
     getProfileUser, 
     updateAvatarUser, 
-    getAvatarUser} = require("../controllers/user");
+    getAvatarUser} = require("../controllers/user.controller");
 const {verifyToken} = require("../middlewares/verify-token");
 const storage = require("../configs/multer");
   
