@@ -6,7 +6,7 @@ const Users = db.users;
 const fs = require('fs');
 
 const updateProfileUser = async (req, res) => {
-    const user = Users.findByPk(req.user.id);
+    const user = await Users.findByPk(req.user.id);
     if (!user)
         return res.status(404).json({
             data: {},
@@ -29,7 +29,7 @@ const updateProfileUser = async (req, res) => {
 };
 
 const getProfileUser = async (req, res) => {
-    const user = Users.findByPk(req.user.id);
+    const user = await Users.findByPk(req.user.id);
     if (!user)
         return res.status(404).json({
             data: {},
@@ -42,7 +42,7 @@ const getProfileUser = async (req, res) => {
     return res.status(200).json({
         data: others,
         status: 200,
-        message: "Update profile successfully!"
+        message: "Get profile successfully!"
     });
 };
 

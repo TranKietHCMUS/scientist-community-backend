@@ -20,6 +20,13 @@ const generageVerifyCode = (username) => {
     const max = Math.pow(10, 6) - 1;
     const num = Math.floor(Math.random() * (max - min + 1)) + min;
     return username + "-" + num.toString();
+};
+
+const generateRandomPassword = (email, name) => {
+    const password = email + name;
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync(password, salt);
+    return hashedPassword;
 }
 
 const registerUser = async (req, res) => {
@@ -50,7 +57,7 @@ const registerUser = async (req, res) => {
         verify_code: verifyCode
     }
      
-    Users.create(newUser)
+    await Users.create(newUser)
     .then(user => {
         sendEmail(user.email, verifyCode);
         return res.status(200).json({
@@ -269,8 +276,8 @@ const requestRefreshToken = async (req, res) => {
                 message: "You're not authenticated!"
             });
         
-            const newAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, "15m");
-            const newRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, "3d");
+            const newAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
+            const newRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
 
             res.cookie("accessToken", newAccessToken, {
                 httpOnly: true,
@@ -316,63 +323,81 @@ const getOauthGooleToken = async (code) => {
       }
     )
     return data
-  }
+};
   
-  const getGoogleUser = async ({ id_token, access_token }) => {
+const getGoogleUser = async ({ idToken, accessToken }) => {
     const { data } = await axios.get(
-      'https://www.googleapis.com/oauth2/v1/userinfo',
-      {
+        'https://www.googleapis.com/oauth2/v1/userinfo',
+        {
         params: {
-          access_token,
-          alt: 'json'
+            access_token: accessToken,
+            alt: 'json'
         },
         headers: {
-          Authorization: `Bearer ${id_token}`
+            Authorization: `Bearer ${idToken}`
         }
-      }
+        }
     )
     return data
-  }
+};
   
-const oauthGoogle = async (req, res, next) => {
-    try {
-      const { code } = req.query
-      const data = await getOauthGooleToken(code)
-      const { id_token, access_token } = data
-      const googleUser = await getGoogleUser({ id_token, access_token })
-  
-      if (!googleUser.verified_email) {
-        return res.status(403).json({
-          message: 'Google email not verified'
-        })
-      }
-  
-      const manual_access_token = jwt.sign(
-        { email: googleUser.email, type: 'access_token' },
-        process.env.JWT_ACCESS_KEY,
-        { expiresIn: '15m' }
-      )
-      const manual_refresh_token = jwt.sign(
-        { email: googleUser.email, type: 'refresh_token' },
-        process.env.JWT_REFRESH_KEY,
-        { expiresIn: '100d' }
-      )
-  
-      console.log(googleUser)
+const oauthGoogle = async (req, res) => {
+    const code = req.query.code;
+    const data = await getOauthGooleToken(code);
+    const idToken = data.id_token;
+    const accessToken = data.access_token;
+    const googleUser = await getGoogleUser({ idToken, accessToken })
 
-      res.cookie("refreshToken", manual_refresh_token, {
+    if (!googleUser.verified_email) {
+        return res.status(403).json({
+            data: {},
+            status: 403,
+            message: "Google email not verified!"
+        });
+    }
+
+    let manualAccessToken = null;
+    let manualRefreshToken = null;
+
+    let user = await Users.findOne({where: {email: googleUser.email}});
+    if (!user) {
+        const newUser = {
+            username: googleUser.email,
+            email: googleUser.email,
+            name: googleUser.name,
+            password: generateRandomPassword(googleUser.email, googleUser.name),
+            day_of_birth: null,
+            is_verify: true
+        }
+
+        await Users.create(newUser);
+
+        user = await Users.findOne({where: {email: googleUser.email}});
+    }
+
+    manualAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
+    manualRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
+
+    user.refresh_token = manualRefreshToken;
+    await user.save();
+
+    const {password, verify_code, refresh_token,...others} = user.dataValues;
+
+    console.log(googleUser);
+
+    res.cookie("refreshToken", manualRefreshToken, {
         httpOnly: true, 
         sameSite: "strict",
     });
-  
-      return res.status(200).json({
-        data: {},
+
+    return res.status(200).json({
+        data: {
+            user: others,
+            access_token: manualAccessToken
+        },
         status: 200,
         message: "Successfully!"
-      })
-    } catch (error) {
-      next(error)
-    }
+    });
   };
 
 module.exports = {
