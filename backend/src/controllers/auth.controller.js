@@ -7,6 +7,8 @@ require("dotenv").config();
 const db = require("../configs/db");
 const Users = db.users;
 
+const {readAndTransformImageToBase64} = require("../utils/services");
+
 const generateToken = (user, secret_key, expire) => {
     return jwt.sign({
         id: user.id,
@@ -75,7 +77,7 @@ const registerUser = async (req, res) => {
     });
 }
 
-const verifyUser = async (req, res) => {
+const verifyEmail = async (req, res) => {
     const verifyCode = req.body.verify_code;
     const username = verifyCode.slice(0, verifyCode.length - 7)
     const user = await Users.findOne({ where: { username: username}});
@@ -197,7 +199,7 @@ const loginUser = async (req, res) => {
     user.refresh_token = refreshToken;
     await user.save() ;
 
-    console.log(user.created_at);
+    others.avatar = await readAndTransformImageToBase64(user.avatar);
 
     return res.status(200).json({
         data: {
@@ -303,102 +305,120 @@ const requestRefreshToken = async (req, res) => {
                 message: "Refresh token successfully."
             });
     });
-}
+};
 
-const getOauthGooleToken = async (code) => {
-    const body = {
-      code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: process.env.GOOGLE_AUTHORIZED_REDIRECT_URI,
-      grant_type: 'authorization_code'
-    }
-    const { data } = await axios.post(
-      'https://oauth2.googleapis.com/token',
-      body,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    )
-    return data
-};
-  
-const getGoogleUser = async ({ idToken, accessToken }) => {
-    const { data } = await axios.get(
-        'https://www.googleapis.com/oauth2/v1/userinfo',
-        {
-        params: {
-            access_token: accessToken,
-            alt: 'json'
-        },
-        headers: {
-            Authorization: `Bearer ${idToken}`
-        }
-        }
-    )
-    return data
-};
-  
+const { OAuth2Client } = require('google-auth-library')
+const client = new OAuth2Client(process.env.CLIENT_ID)
 const oauthGoogle = async (req, res) => {
-    const code = req.query.code;
-    const data = await getOauthGooleToken(code);
-    const idToken = data.id_token;
-    const accessToken = data.access_token;
-    const googleUser = await getGoogleUser({ idToken, accessToken })
-
-    if (!googleUser.verified_email) {
-        return res.status(403).json({
-            data: {},
-            status: 403,
-            message: "Google email not verified!"
-        });
-    }
-
-    let manualAccessToken = null;
-    let manualRefreshToken = null;
-
-    let user = await Users.findOne({where: {email: googleUser.email}});
-    if (!user) {
-        const newUser = {
-            username: googleUser.email,
-            email: googleUser.email,
-            name: googleUser.name,
-            password: generateRandomPassword(googleUser.email, googleUser.name),
-            day_of_birth: null,
-            is_verify: true
-        }
-
-        await Users.create(newUser);
-
-        user = await Users.findOne({where: {email: googleUser.email}});
-    }
-
-    manualAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
-    manualRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
-
-    user.refresh_token = manualRefreshToken;
-    await user.save();
-
-    const {password, verify_code, refresh_token,...others} = user.dataValues;
-
-    console.log(googleUser);
-
-    res.cookie("refreshToken", manualRefreshToken, {
-        httpOnly: true, 
-        sameSite: "strict",
+    const { token }  = req.body
+    const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.CLIENT_ID
     });
+    const { name, email, picture } = ticket.getPayload();    
+    const user = await db.user.upsert({ 
+        where: { email: email },
+        update: { name, picture },
+        create: { name, email, picture }
+    })
+    res.status(201)
+    res.json(user)
+};
 
-    return res.status(200).json({
-        data: {
-            user: others,
-            access_token: manualAccessToken
-        },
-        status: 200,
-        message: "Successfully!"
-    });
-  };
+// const getOauthGooleToken = async (code) => {
+//     const body = {
+//       code,
+//       client_id: process.env.GOOGLE_CLIENT_ID,
+//       client_secret: process.env.GOOGLE_CLIENT_SECRET,
+//       redirect_uri: process.env.GOOGLE_AUTHORIZED_REDIRECT_URI,
+//       grant_type: 'authorization_code'
+//     }
+//     const { data } = await axios.post(
+//       'https://oauth2.googleapis.com/token',
+//       body,
+//       {
+//         headers: {
+//           'Content-Type': 'application/x-www-form-urlencoded'
+//         }
+//       }
+//     )
+//     return data
+// };
+  
+// const getGoogleUser = async ({ idToken, accessToken }) => {
+//     const { data } = await axios.get(
+//         'https://www.googleapis.com/oauth2/v1/userinfo',
+//         {
+//         params: {
+//             access_token: accessToken,
+//             alt: 'json'
+//         },
+//         headers: {
+//             Authorization: `Bearer ${idToken}`
+//         }
+//         }
+//     )
+//     return data
+// };
+  
+// const oauthGoogle = async (req, res) => {
+//     const code = req.query.code;
+//     const data = await getOauthGooleToken(code);
+//     const idToken = data.id_token;
+//     const accessToken = data.access_token;
+//     const googleUser = await getGoogleUser({ idToken, accessToken })
+
+//     if (!googleUser.verified_email) {
+//         return res.status(403).json({
+//             data: {},
+//             status: 403,
+//             message: "Google email not verified!"
+//         });
+//     }
+
+//     let manualAccessToken = null;
+//     let manualRefreshToken = null;
+
+//     let user = await Users.findOne({where: {email: googleUser.email}});
+//     if (!user) {
+//         const newUser = {
+//             username: googleUser.email,
+//             email: googleUser.email,
+//             name: googleUser.name,
+//             password: generateRandomPassword(googleUser.email, googleUser.name),
+//             day_of_birth: null,
+//             is_verify: true
+//         }
+
+//         await Users.create(newUser);
+
+//         user = await Users.findOne({where: {email: googleUser.email}});
+//     }
+
+//     manualAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
+//     manualRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
+
+//     user.refresh_token = manualRefreshToken;
+//     await user.save();
+
+//     const {password, verify_code, refresh_token,...others} = user.dataValues;
+
+//     console.log(googleUser);
+
+//     res.cookie("refreshToken", manualRefreshToken, {
+//         httpOnly: true, 
+//         sameSite: "strict",
+//     });
+
+//     return res.status(200).json({
+//         data: {
+//             user: others,
+//             access_token: manualAccessToken
+//         },
+//         status: 200,
+//         message: "Successfully!"
+//     });
+//   };
 
 module.exports = {
     loginUser,
@@ -406,7 +426,7 @@ module.exports = {
     logoutUser,
     oauthGoogle,
     registerUser,
-    verifyUser,
+    verifyEmail,
     forgetPassword,
     resetPassword
   };

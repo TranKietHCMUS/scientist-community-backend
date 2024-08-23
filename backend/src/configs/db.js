@@ -26,6 +26,10 @@ db.sequelize = sequelize;
 
 db.users = require('../models/user.model.js')(sequelize, DataTypes);
 db.community = require("../models/community.model.js")(sequelize, DataTypes);
+db.globalId = require("../models/global-id.model.js")(sequelize, DataTypes);
+
+Users.hasMany(GlobalID, { foreignKey: 'userId' });
+GlobalID.belongsTo(Users, { foreignKey: 'userId' });
 
 db.sequelize.sync({ force: false })
 .then(() => {
