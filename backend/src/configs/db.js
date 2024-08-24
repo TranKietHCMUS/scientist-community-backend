@@ -13,10 +13,10 @@ const sequelize = new Sequelize(
 
 sequelize.authenticate()
 .then(() => {
-    console.log('connected..')
+    console.log('connected..');
 })
 .catch(err => {
-    console.log('Error'+ err)
+    console.log('Error'+ err);
 });
 
 const db = {};
@@ -24,8 +24,11 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-db.users = require('./userModel.js')(sequelize, DataTypes);
-db.community = require("./communityModel.js")(sequelize, DataTypes);
+db.users = require('../models/user.model.js')(sequelize, DataTypes);
+db.community = require("../models/community.model.js")(sequelize, DataTypes);
+db.globalId = require("../models/globalid.model.js")(sequelize, DataTypes);
+db.certificate = require("../models/certificate.model.js")(sequelize, DataTypes);
+db.user_cer = require("../models/user-cer.model.js")(sequelize, DataTypes);
 
 db.sequelize.sync({ force: false })
 .then(() => {

@@ -1,26 +1,16 @@
 const axios = require('axios');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const sendEmail = require("../Utils/nodemailer");
+const sendEmail = require("../configs/nodemailer");
 require("dotenv").config();
 
-const db = require("../Models/db");
+const db = require("../configs/db");
 const Users = db.users;
 
-const generateToken = (user, secret_key, expire) => {
-    return jwt.sign({
-        id: user.id,
-        username: user.username,
-        name: user.name,
-    }, secret_key, {expiresIn: expire});
-};
-
-const generageVerifyCode = (username) => {
-    const min = Math.pow(10, 6 - 1);
-    const max = Math.pow(10, 6) - 1;
-    const num = Math.floor(Math.random() * (max - min + 1)) + min;
-    return username + "-" + num.toString();
-}
+const {readAndTransformImageToBase64, 
+    generageVerifyCode, 
+    generateRandomPassword, 
+    generateToken} = require("../utils/services");
 
 const registerUser = async (req, res) => {
     if (!req.body.username || !req.body.email || !req.body.password || !req.body.name)
@@ -50,7 +40,7 @@ const registerUser = async (req, res) => {
         verify_code: verifyCode
     }
      
-    Users.create(newUser)
+    await Users.create(newUser)
     .then(user => {
         sendEmail(user.email, verifyCode);
         return res.status(200).json({
@@ -68,7 +58,7 @@ const registerUser = async (req, res) => {
     });
 }
 
-const verifyUser = async (req, res) => {
+const verifyEmail = async (req, res) => {
     const verifyCode = req.body.verify_code;
     const username = verifyCode.slice(0, verifyCode.length - 7)
     const user = await Users.findOne({ where: { username: username}});
@@ -190,7 +180,8 @@ const loginUser = async (req, res) => {
     user.refresh_token = refreshToken;
     await user.save() ;
 
-    console.log(user.created_at);
+    if (user.avatar)
+        others.avatar = await readAndTransformImageToBase64(user.avatar);
 
     return res.status(200).json({
         data: {
@@ -269,8 +260,8 @@ const requestRefreshToken = async (req, res) => {
                 message: "You're not authenticated!"
             });
         
-            const newAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, "15m");
-            const newRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, "3d");
+            const newAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
+            const newRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
 
             res.cookie("accessToken", newAccessToken, {
                 httpOnly: true,
@@ -296,84 +287,56 @@ const requestRefreshToken = async (req, res) => {
                 message: "Refresh token successfully."
             });
     });
-}
+};
 
-const getOauthGooleToken = async (code) => {
-    const body = {
-      code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: process.env.GOOGLE_AUTHORIZED_REDIRECT_URI,
-      grant_type: 'authorization_code'
+const oauthGoogle = async (req, res) => {
+    let user = await Users.findOne({where: {email: req.body.email}});
+    if (!user) {
+        const newUser = {
+            username: req.body.email,
+            email: req.body.email,
+            name: req.body.name,
+            password: generateRandomPassword(20),
+            is_verify: true
+        }
+
+        await Users.create(newUser)
+        
+        user = await Users.findOne({where: {email: req.body.email}});
     }
-    const { data } = await axios.post(
-      'https://oauth2.googleapis.com/token',
-      body,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    )
-    return data
-  }
-  
-  const getGoogleUser = async ({ id_token, access_token }) => {
-    const { data } = await axios.get(
-      'https://www.googleapis.com/oauth2/v1/userinfo',
-      {
-        params: {
-          access_token,
-          alt: 'json'
-        },
-        headers: {
-          Authorization: `Bearer ${id_token}`
-        }
-      }
-    )
-    return data
-  }
-  
-const oauthGoogle = async (req, res, next) => {
-    try {
-      const { code } = req.query
-      const data = await getOauthGooleToken(code)
-      const { id_token, access_token } = data
-      const googleUser = await getGoogleUser({ id_token, access_token })
-  
-      if (!googleUser.verified_email) {
-        return res.status(403).json({
-          message: 'Google email not verified'
-        })
-      }
-  
-      const manual_access_token = jwt.sign(
-        { email: googleUser.email, type: 'access_token' },
-        process.env.JWT_ACCESS_KEY,
-        { expiresIn: '15m' }
-      )
-      const manual_refresh_token = jwt.sign(
-        { email: googleUser.email, type: 'refresh_token' },
-        process.env.JWT_REFRESH_KEY,
-        { expiresIn: '100d' }
-      )
-  
-      console.log(googleUser)
 
-      res.cookie("refreshToken", manual_refresh_token, {
+    const accessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
+    const refreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
+
+    res.cookie("refreshToken", refreshToken, {
         httpOnly: true, 
+        path: "/api/auth/refresh",
         sameSite: "strict",
     });
-  
-      return res.status(200).json({
-        data: {},
+
+    res.cookie("refreshLogout", refreshToken, {
+        httpOnly: true, 
+        path: "/api/auth/logout",
+        sameSite: "strict",
+    });
+
+    const {password, refresh_token, verify_code,...others} = user.dataValues;
+
+    user.refresh_token = refreshToken;
+    await user.save() ;
+
+    if (user.avatar)
+        others.avatar = await readAndTransformImageToBase64(user.avatar);
+
+    return res.status(200).json({
+        data: {
+            user: others,
+            access_token: accessToken
+        },
         status: 200,
-        message: "Successfully!"
-      })
-    } catch (error) {
-      next(error)
-    }
-  };
+        message: "Logged in successfully!"
+    });
+}
 
 module.exports = {
     loginUser,
@@ -381,7 +344,7 @@ module.exports = {
     logoutUser,
     oauthGoogle,
     registerUser,
-    verifyUser,
+    verifyEmail,
     forgetPassword,
     resetPassword
   };

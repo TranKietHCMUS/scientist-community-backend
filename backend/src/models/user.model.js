@@ -1,5 +1,4 @@
 module.exports = (sequelize, DataTypes) => {
-
     const Users = sequelize.define("users", {
         id: {
             type: DataTypes.INTEGER,
@@ -27,7 +26,7 @@ module.exports = (sequelize, DataTypes) => {
         day_of_birth: {
             type: DataTypes.DATE,
         },
-        about_me: {
+        decription: {
             type: DataTypes.STRING
         },
         refresh_token: {
@@ -42,12 +41,21 @@ module.exports = (sequelize, DataTypes) => {
         },
         avatar: {
             type:DataTypes.STRING
-        }
+        },
     }, {
         timestamps: true,
         createdAt: 'created_at', // Alias createdAt as created_at
         updatedAt: 'updated_at'  // Alias updatedAt as updated_at
     });
+
+    Users.associate = (models) => {
+        Users.hasMany(models.GlobalID, { foreignKey: 'user_id' });
+        Users.belongsToMany(models.Certificate, {
+            through: models.UserCer,
+            foreignKey: 'user_id',
+            as: 'certificate'
+          });
+    };
 
     return Users
 
