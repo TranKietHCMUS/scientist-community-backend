@@ -1,4 +1,3 @@
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const appRootPath = require("app-root-path");
 const fs = require('fs').promises;
@@ -25,12 +24,23 @@ const generageVerifyCode = (username) => {
     return username + "-" + num.toString();
 };
 
-const generateRandomPassword = (email, name) => {
-    const password = email + name;
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(password, salt);
-    return hashedPassword;
-};
+function generateRandomPassword(length) {
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    const specialChars = '!@#$%^&*';
+  
+    const allChars = lowercase + uppercase + numbers + specialChars;
+  
+  
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * allChars.length);
+      password += allChars[randomIndex];
+    }
+  
+    return password; 
+  }
 
 const readAndTransformImageToBase64 = async (imagePath) => {
     try {
