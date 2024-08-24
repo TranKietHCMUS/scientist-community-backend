@@ -48,6 +48,15 @@ module.exports = (sequelize, DataTypes) => {
         updatedAt: 'updated_at'  // Alias updatedAt as updated_at
     });
 
+    Users.associate = (models) => {
+        Users.hasMany(models.GlobalID, { foreignKey: 'user_id' });
+        Users.belongsToMany(models.Certificate, {
+            through: models.UserCer,
+            foreignKey: 'user_id',
+            as: 'certificate'
+          });
+    };
+
     return Users
 
 }

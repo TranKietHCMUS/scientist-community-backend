@@ -1,10 +1,14 @@
 module.exports = (sequelize,DataTypes) => {
 
-    const Community= sequelize.define("community", {
+    const Certificate= sequelize.define("certificate", {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
             autoIncrement: true
+        },
+        com_id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
         },
         name: {
             type: DataTypes.STRING,
@@ -12,28 +16,27 @@ module.exports = (sequelize,DataTypes) => {
         },
         decription: {
             type: DataTypes.STRING
-        },
-        owner: {
-            type: DataTypes.INTEGER,
-            allowNull: false
-        },
-        rate: {
-            type: DataTypes.STRING
-        },
+        }
     }, {
-        tableName: 'Community'
+        tableName: 'Certificate'
     }, {
         timestamps: true,
         createdAt: 'created_at', // Alias createdAt as created_at
         updatedAt: 'updated_at'  // Alias updatedAt as updated_at
     });
 
-    Community.associate = (models) => {
-        Community.hasMany(models.Certificate, {
+    Certificate.associate = (models) => {
+        Certificate.belongsTo(models.Community, {
             foreignKey: 'com_id',
-            as: 'certificate'
+            as: 'community'
+          });
+      
+          Certificate.belongsToMany(models.Users, {
+            through: models.UserCer,
+            foreignKey: 'cer_id',
+            as: 'users'
           });
     };
 
-    return Community
+    return Certificate
 };
