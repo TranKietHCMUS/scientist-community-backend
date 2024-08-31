@@ -56,12 +56,17 @@ const verifyEmail = async (req, res) => {
     const verifyCode = req.body.verify_code;
     const username = verifyCode.slice(0, verifyCode.length - 7)
     const user = await User.findOne({ where: { username: username}});
-    if (!user || user.verify_code !== verifyCode) {
-        await user.destroy();
-        return res.status(204).json({
+    if (user.is_verify)
+        return res.status(400).json({
             data: {},
-            status: 204,
-            message: "Wrong verify code. Can not create account!"
+            status: 400,
+            message: "This email is verified!"
+        });
+    if (!user || user.verify_code !== verifyCode) {
+        return res.status(400).json({
+            data: {},
+            status: 400,
+            message: "Wrong verify code.!"
         });
     }
 
@@ -77,7 +82,7 @@ const verifyEmail = async (req, res) => {
     });
 };
 
-const forgetPassword = async (req, res) => {
+const getVerifyCode = async (req, res) => {
     email = req.body.email;
     const user = await User.findOne({ where: { email: req.body.email }});
     if (!user)
@@ -333,6 +338,6 @@ module.exports = {
     oauthGoogle,
     registerUser,
     verifyEmail,
-    forgetPassword,
+    getVerifyCode,
     resetPassword
   };
