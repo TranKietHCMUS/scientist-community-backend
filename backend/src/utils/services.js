@@ -11,9 +11,9 @@ const formatFilePath = (fileName) => {
 
 const generateToken = (user, secret_key, expire) => {
     return jwt.sign({
-        id: user.id,
+        user_id: user.user_id,
         username: user.username,
-        name: user.name,
+        full_name: user.full_name,
     }, secret_key, {expiresIn: expire});
 };
 

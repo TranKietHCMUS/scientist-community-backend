@@ -24,11 +24,26 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-db.users = require('../models/user.model.js')(sequelize, DataTypes);
+db.user = require('../models/user.model.js')(sequelize, DataTypes);
 db.community = require("../models/community.model.js")(sequelize, DataTypes);
-db.globalId = require("../models/globalid.model.js")(sequelize, DataTypes);
-db.certificate = require("../models/certificate.model.js")(sequelize, DataTypes);
-db.user_cer = require("../models/user-cer.model.js")(sequelize, DataTypes);
+db.wallet = require("../models/wallet.model.js")(sequelize, DataTypes);
+db.user_wallet = require("../models/user_wallet.model.js")(sequelize,DataTypes);
+
+// Communities owner refers to users.id
+db.community.belongsTo(db.user, { foreignKey: "owner" });
+db.user.hasMany(db.community, { foreignKey: "owner" });
+
+// Wallet created_by refers to users.id
+db.wallet.belongsTo(db.user, { foreignKey: "created_by" });
+db.user.hasMany(db.wallet, { foreignKey: "created_by" });
+
+// Users global_id_active refers to wallet.id
+db.user.belongsTo(db.wallet, { foreignKey: "global_id_active" });
+db.wallet.hasOne(db.user, { foreignKey: "global_id_active" });
+
+// User_wallet user_id refers to users.id
+db.user_wallet.belongsTo(db.user, { foreignKey: "user_id" });
+db.user.hasMany(db.user_wallet, { foreignKey: "user_id" });
 
 db.sequelize.sync({ force: false })
 .then(() => {

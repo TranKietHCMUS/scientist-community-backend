@@ -1,17 +1,13 @@
 require("dotenv").config();
 
-const appRootPath = require("app-root-path");
 const db = require("../configs/db");
-const Users = db.users;
-const GlobalID = db.globalId;
-const Certificate = db.certificate;
-const Community = db.community;
-const UserCer = db.user_cer;
-const fs = require('fs');
+const User = db.user;
+const Wallet = db.wallet;
+
 const {formatFilePath, readAndTransformImageToBase64} = require("../utils/services");
 
 const updateUser = async (req, res) => {
-    const user = await Users.findByPk(req.user.id);
+    const user = await User.findByPk(req.user.user_id);
     if (!user)
         return res.status(404).json({
             data: {},
@@ -19,12 +15,11 @@ const updateUser = async (req, res) => {
             message: "User not found!"
         });
 
-    user.name = req.body.name;
-    user.about_me = req.body.about_me;
-    user.day_of_birth = req.body.day_of_birth;
+    user.full_name = req.body.full_name ? req.body.full_name : user.full_name;
+    user.description = req.body.description ? req.body.description : user.description;
+    user.day_of_birth = req.body.day_of_birth ? req.body.day_of_birth : user.day_of_birth;
+    user.phone = req.body.phone ? req.body.phone : user.phone;
     user.avatar = req.file ? formatFilePath(req.file.filename) : user.avatar;
-
-    console.log(user.avatar);
 
     await user.save();
     const {password, refresh_token, verify_code,...others} = user.dataValues;
@@ -39,7 +34,7 @@ const updateUser = async (req, res) => {
 };
 
 const getUser = async (req, res) => {
-    const user = await Users.findByPk(req.user.id);
+    const user = await User.findByPk(req.params.user_id);
     if (!user)
         return res.status(404).json({
             data: {},
@@ -58,19 +53,19 @@ const getUser = async (req, res) => {
     });
 };
 
-const useGlobalID = async (req, res) => {  
-    const globalId = await findOne({where: {id: req.body.global_id, user_id: req.user.id}});
-    if (globalId)
+const useWallet = async (req, res) => {  
+    const wallet = await Wallet.findOne({where: {id: req.body.global_id}});
+    if (wallet)
         return res.status(400).json({
             data: {},
             status: 400,
-            message: "You have already used this global ID!"
+            message: "You have already used this wallet!"
         });
 
-    await GlobalID.create({
-        id: req.body.global_id,
-        user_id: req.user.id
-    })
+    await Wallet.create({
+        global_id: req.body.global_id,
+        created_by: req.user.user_id
+    });
 
     return res.status(200).json({
         data: {},
@@ -79,57 +74,28 @@ const useGlobalID = async (req, res) => {
     });
 };
 
-const createGlobalID = async (req, res) => {
+const createWallet = async (req, res) => {
     const id = Math.floor(Math.random() * (100000 - 1 + 1)) + 1;
-
+    await Wallet.create({
+        global_id: id,
+        created_by: req.user.user_id
+    });
 
     return res.status(200).json({
         data: {
-            global_id: id
+            wallet: {
+                global_id: id,
+                created_by: req.user.user_id
+            }
         },
         status: 200,
         message: "Successfully!"
     });
 };
 
-const myCertificateList = async (req, res) => {
-    try {
-        const result = await Users.findByPk(req.user.id, {
-            include: [
-              {
-                model: Certificate,
-                as: 'certificate',
-                include: [
-                  {
-                    model: Community,
-                    as: 'community'
-                  }
-                ]
-              }
-            ]
-          });
-    
-        return res.status(200).json({
-            data: {
-                certificate_list: result
-            },
-            status: 200,
-            message: "Successfully!"
-        });
-    }
-    catch (err) {
-        return res.status(500).json({
-            data: {},
-            status: 500,
-            message: "Fail!"
-        });
-    }
-}
-
 module.exports = {
     updateUser,
     getUser,
-    useGlobalID,
-    createGlobalID,
-    myCertificateList
+    useWallet,
+    createWallet,
 }
