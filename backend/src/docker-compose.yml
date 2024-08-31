@@ -1,0 +1,12 @@
+version: "3"
+services:
+  db:
+    image: mysql
+    environment:
+      - USER_DB =root
+      - PASSWORD_DB=1511
+      - DATABASE=kiettna
+  app:
+    image: ds-talent-backend
+    port:
+      - 8080:8080
