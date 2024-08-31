@@ -238,46 +238,42 @@ const requestRefreshToken = async (req, res) => {
         });
     
     jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY, async (err, user) => {
-        if (err) 
-            return res.status(401).json({
-                data: {},
-                status: 401,
-                message: "You're not authenticated!"
-            });
-        
         const userDB = await User.findByPk(user.user_id);
-
-        if (!userDB || refreshToken !== userDB.dataValues.refresh_token)
+        
+        if (err || !userDB || refreshToken !== userDB.dataValues.refresh_token) {
+            res.clearCookie("refreshToken");
+            res.clearCookie("refreshLogout");
             return res.status(401).json({
                 data: {},
                 status: 401,
                 message: "You're not authenticated!"
             });
+        }
         
-            const newAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
-            const newRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
+        const newAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
+        const newRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
 
-            res.cookie("refreshToken", newRefreshToken, {
-                httpOnly: true,
-                path: "/api/auth/refresh",
-                sameSite: "strict",
-            });
-            res.cookie("refreshLogout", newRefreshToken, {
-                httpOnly: true, 
-                path: "/api/auth/logout",
-                sameSite: "strict",
-            });
+        res.cookie("refreshToken", newRefreshToken, {
+            httpOnly: true,
+            path: "/api/auth/refresh",
+            sameSite: "strict",
+        });
+        res.cookie("refreshLogout", newRefreshToken, {
+            httpOnly: true, 
+            path: "/api/auth/logout",
+            sameSite: "strict",
+        });
 
-            userDB.refresh_token = newRefreshToken;
-            await userDB.save();
+        userDB.refresh_token = newRefreshToken;
+        await userDB.save();
 
-            return res.status(200).json({
-                data: {
-                    access_token: newAccessToken
-                },
-                status: 200,
-                message: "Refresh token successfully."
-            });
+        return res.status(200).json({
+            data: {
+                access_token: newAccessToken
+            },
+            status: 200,
+            message: "Refresh token successfully."
+        });
     });
 };
 
