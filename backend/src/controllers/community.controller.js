@@ -2,9 +2,9 @@ const db = require("../configs/db");
 const Community = db.community;
 
 const getCommunityList = async (req, res) => {
-    const communities = await Community.findAll({ attributes: ['id', 'name', 'owner'], order: [['createdAt']]});
-    const owner_communities = communities.filter(community => community.owner === req.user.id);
-    const not_owner_communities = communities.filter(community => community.owner !== req.user.id);
+    const communities = await Community.findAll({ attributes: ['community_id', 'name', 'owner'], order: [['createdAt']]});
+    const owner_communities = communities.filter(community => community.owner === req.user.user_id);
+    const not_owner_communities = communities.filter(community => community.owner !== req.user.user_id);
 
     const data = [...owner_communities, ...not_owner_communities];
 
@@ -18,7 +18,7 @@ const getCommunityList = async (req, res) => {
 const createCommunity = async (req, res) => {
     const newCommunity = {
         name: req.body.name,
-        owner: req.user.id,
+        owner: req.user.user_id,
     }
 
     await Community.create(newCommunity);
@@ -30,7 +30,7 @@ const createCommunity = async (req, res) => {
 };
 
 const getCommunityDetail = async (req, res) => {
-    const community = await Community.findOne({where: {id: req.params.id}});
+    const community = await Community.findOne({where: {community_id: req.params.community_id}});
 
     if (!community)
         return res.status(404).json({

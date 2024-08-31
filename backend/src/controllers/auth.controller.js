@@ -5,7 +5,7 @@ const sendEmail = require("../configs/nodemailer");
 require("dotenv").config();
 
 const db = require("../configs/db");
-const Users = db.users;
+const User = db.user;
 
 const {readAndTransformImageToBase64, 
     generageVerifyCode, 
@@ -13,13 +13,7 @@ const {readAndTransformImageToBase64,
     generateToken} = require("../utils/services");
 
 const registerUser = async (req, res) => {
-    if (!req.body.username || !req.body.email || !req.body.password || !req.body.name)
-        return res.status(400).json({
-            data: {},
-            status: 400,
-            message: "All fields are required!"
-        });
-    const user = await Users.findOne({ where: { username: req.body.username}});
+    const user = await User.findOne({ where: { username: req.body.username}});
     if (user)
         return res.status(400).json({
             data: {},
@@ -35,12 +29,12 @@ const registerUser = async (req, res) => {
     const newUser = {
         email: req.body.email,
         username: req.body.username,
-        name: req.body.name,
+        full_name: req.body.full_name,
         password: hashedPassword,
         verify_code: verifyCode
     }
      
-    await Users.create(newUser)
+    await User.create(newUser)
     .then(user => {
         sendEmail(user.email, verifyCode);
         return res.status(200).json({
@@ -61,7 +55,7 @@ const registerUser = async (req, res) => {
 const verifyEmail = async (req, res) => {
     const verifyCode = req.body.verify_code;
     const username = verifyCode.slice(0, verifyCode.length - 7)
-    const user = await Users.findOne({ where: { username: username}});
+    const user = await User.findOne({ where: { username: username}});
     if (!user || user.verify_code !== verifyCode) {
         await user.destroy();
         return res.status(204).json({
@@ -85,7 +79,7 @@ const verifyEmail = async (req, res) => {
 
 const forgetPassword = async (req, res) => {
     email = req.body.email;
-    const user = await Users.findOne({ where: { email: req.body.email }});
+    const user = await User.findOne({ where: { email: req.body.email }});
     if (!user)
         return res.status(404).json({
             data: {},
@@ -109,7 +103,7 @@ const forgetPassword = async (req, res) => {
 const resetPassword = async (req, res) => {
     const verifyCode = req.body.verify_code;
     const username = verifyCode.slice(0, verifyCode.length - 7)
-    const user = await Users.findOne({ where: { username: username}});
+    const user = await User.findOne({ where: { username: username}});
     if (user.verify_code !== verifyCode) {
         return res.status(400).json({
             data: {},
@@ -136,7 +130,7 @@ const loginUser = async (req, res) => {
     if (!req.body.username || !req.body.password) {
         return res.status(400).json({ message: 'All fields are required' });
       }
-    const user = await Users.findOne({ where: { username: req.body.username }});
+    const user = await User.findOne({ where: { username: req.body.username }});
     if (!user)
         return res.status(404).json({
             data: {},
@@ -199,7 +193,7 @@ const logoutUser = async (req, res) => {
     res.clearCookie("refreshToken");
     res.clearCookie("refreshLogout");
 
-    const user = await Users.findOne({ where: { refresh_token: refreshToken }});
+    const user = await User.findOne({ where: { refresh_token: refreshToken }});
     if (!user)
         return res.status(404).json({
                 data: {},
@@ -251,7 +245,7 @@ const requestRefreshToken = async (req, res) => {
                 message: "You're not authenticated!"
             });
         
-        const userDB = await Users.findByPk(user.id);
+        const userDB = await User.findByPk(user.user_id);
 
         if (!userDB || refreshToken !== userDB.dataValues.refresh_token)
             return res.status(401).json({
@@ -263,10 +257,6 @@ const requestRefreshToken = async (req, res) => {
             const newAccessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);
             const newRefreshToken = generateToken(user, process.env.JWT_REFRESH_KEY, process.env.REFRESH_TIME);
 
-            res.cookie("accessToken", newAccessToken, {
-                httpOnly: true,
-                sameSite: "strict"
-            });
             res.cookie("refreshToken", newRefreshToken, {
                 httpOnly: true,
                 path: "/api/auth/refresh",
@@ -282,7 +272,9 @@ const requestRefreshToken = async (req, res) => {
             await userDB.save();
 
             return res.status(200).json({
-                data: {},
+                data: {
+                    access_token: newAccessToken
+                },
                 status: 200,
                 message: "Refresh token successfully."
             });
@@ -290,19 +282,19 @@ const requestRefreshToken = async (req, res) => {
 };
 
 const oauthGoogle = async (req, res) => {
-    let user = await Users.findOne({where: {email: req.body.email}});
+    let user = await User.findOne({where: {email: req.body.email}});
     if (!user) {
         const newUser = {
             username: req.body.email,
             email: req.body.email,
-            name: req.body.name,
+            full_name: req.body.full_name,
             password: generateRandomPassword(20),
             is_verify: true
         }
 
-        await Users.create(newUser)
+        await User.create(newUser)
         
-        user = await Users.findOne({where: {email: req.body.email}});
+        user = await User.findOne({where: {email: req.body.email}});
     }
 
     const accessToken = generateToken(user, process.env.JWT_ACCESS_KEY, process.env.ACCESS_TIME);

@@ -1,0 +1,20 @@
+# Chỉ định image cơ sở (base image)
+FROM node:18-alpine
+
+# Tạo thư mục làm việc trong container
+WORKDIR /app
+
+# Copy package.json và package-lock.json vào container
+COPY package*.json ./
+
+# Cài đặt các dependency
+RUN npm install
+
+# Copy toàn bộ code ứng dụng vào container
+COPY . .
+
+# Chỉ định cổng để ứng dụng lắng nghe
+EXPOSE 8080
+
+# Lệnh để khởi động ứng dụng
+CMD ["npm", "start"]
