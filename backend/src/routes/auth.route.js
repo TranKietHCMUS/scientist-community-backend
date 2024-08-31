@@ -15,7 +15,7 @@ router.post("/register", registerUser);
 router.post("/refresh", requestRefreshToken);
 router.post("/logout", logoutUser);
 router.post("/email/verify", verifyEmail);
-router.post("/verify", getVerifyCode);
+router.post("/email/code", getVerifyCode);
 router.post("/password/reset", resetPassword);
 router.get("/oauth/google", oauthGoogle);
 
